@@ -19,7 +19,8 @@
     "cronstrue": "^1.112.0",
     "email": "^0.2.6",
     "node-fetch": "^2.6.1",
-    "node-schedule": "^2.0.0"
+    "node-schedule": "^2.0.0",
+    "npm-watch": "^0.10.0"
   },
   "keywords": [
     "crypto",

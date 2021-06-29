@@ -34,27 +34,30 @@ export class BinanceAPI {
       side: "BUY",
       type: "MARKET",
       recvWindow: 30000,
-      timestamp: Date.now()
-    }
+      sideEffectType: "MARGIN_BUY",
+      timestamp: Date.now(),
+    };
 
     if (quantity) params.quantity = quantity;
     if (quoteOrderQty) params.quoteOrderQty = quoteOrderQty;
 
     params.signature = this.createSignature(params);
 
-    const url = `${this.apiUrl}/api/v3/order?${querystring.stringify(params)}`;
+    const url = `${this.apiUrl}/sapi/v1/margin/order?${querystring.stringify(
+      params
+    )}`;
 
     try {
       const response = await fetch(url, {
         method: "POST",
         headers: {
           "X-MBX-APIKEY": this.key,
-          "Content-Type": "application/json"
-        }
+          "Content-Type": "application/json",
+        },
       });
 
       return await response.json();
-    } catch(error) {
+    } catch (error) {
       console.error(error);
     }
   }
@@ -65,27 +68,30 @@ export class BinanceAPI {
       side: "SELL",
       type: "MARKET",
       recvWindow: 30000,
-      timestamp: Date.now()
-    }
+      sideEffectType: "AUTO_REPAY",
+      timestamp: Date.now(),
+    };
 
     if (quantity) params.quantity = quantity;
     if (quoteOrderQty) params.quoteOrderQty = quoteOrderQty;
 
     params.signature = this.createSignature(params);
 
-    const url = `${this.apiUrl}/api/v3/order?${querystring.stringify(params)}`;
+    const url = `${this.apiUrl}/sapi/v1/margin/order?${querystring.stringify(
+      params
+    )}`;
 
     try {
       const response = await fetch(url, {
         method: "POST",
         headers: {
           "X-MBX-APIKEY": this.key,
-          "Content-Type": "application/json"
-        }
+          "Content-Type": "application/json",
+        },
       });
 
       return await response.json();
-    } catch(error) {
+    } catch (error) {
       console.error(error);
     }
   }
