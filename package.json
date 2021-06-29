@@ -1,0 +1,34 @@
+{
+  "name": "dca-bot-scheduler-binance",
+  "version": "1.0.0",
+  "description": "Automatic Bot for DCA-ing (Dollar-Cost Average) cryptocurrencies on Binance",
+  "main": "src/index.js",
+  "type": "module",
+  "author": "Vlad Cimpianu <vladcimpianu@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vladcimpianu/binance-dca-bot.git"
+  },
+  "scripts": {
+    "start": "node ./src/index.js"
+  },
+  "dependencies": {
+    "@sendgrid/mail": "^7.4.2",
+    "colors": "^1.4.0",
+    "cronstrue": "^1.112.0",
+    "email": "^0.2.6",
+    "node-fetch": "^2.6.1",
+    "node-schedule": "^2.0.0"
+  },
+  "keywords": [
+    "crypto",
+    "binance",
+    "cryptocurrency",
+    "bitcoin",
+    "ethereum",
+    "dca",
+    "dollar-cost-average",
+    "binance-api"
+  ]
+}
