@@ -43,12 +43,12 @@ export class BinanceAPI {
 
     params.signature = this.createSignature(params);
 
-    const url = `${this.apiUrl}/sapi/v1/margin/order?${querystring.stringify(
-      params
-    )}`;
+    const orderUrl = `${
+      this.apiUrl
+    }/sapi/v1/margin/order?${querystring.stringify(params)}`;
 
     try {
-      const response = await fetch(url, {
+      const response = await fetch(orderUrl, {
         method: "POST",
         headers: {
           "X-MBX-APIKEY": this.key,

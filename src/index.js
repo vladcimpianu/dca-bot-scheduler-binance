@@ -5,6 +5,7 @@ import cronstrue from "cronstrue";
 import { SendGridNotification } from "./services/sendgrid-notification.js";
 import colors from "colors";
 import fetch from "node-fetch";
+import querystring from "querystring";
 
 const apiUrl = "https://api.binance.com";
 const notification = new SendGridNotification(config.sendgrid_secret);
@@ -16,18 +17,40 @@ async function placeOrder(coin) {
   const api = new BinanceAPI(config.binance_key, config.binance_secret);
   const { asset, currency, quantity, quoteOrderQty } = coin;
   const pair = asset + currency;
-  const { priceChangePercent } = await fetch(`${apiUrl}/api/v3/ticker/24hr? `, {
-    symbol: pair,
-  });
 
-  const priceChange24h = Number(priceChangePercent);
+  const priceChangeUrl = `${apiUrl}/api/v3/ticker/24hr?${querystring.stringify({
+    symbol: pair,
+  })}`;
+  const priceChangeResponse = await fetch(priceChangeUrl, {
+    method: "GET",
+    headers: {
+      "X-MBX-APIKEY": config.binance_key,
+      "Content-Type": "application/json",
+    },
+  });
+  const priceChangeJSON = await priceChangeResponse.json();
+  const { priceChangePercent } = priceChangeJSON;
+  console.log(priceChangePercent);
+
+  // const calculateBuyQuntity = (index, change) => {
+  //   const amountToAdd =
+  //     parseInt(change) < 0
+  //       ? (Math.abs(Math.floor(Math.ceil(parseInt(change)))) * 10) / 100
+  //       : 0;
+  //   const result = index + amountToAdd;
+  //   return result;
+  // };
 
   const buyQuoteOrderQty =
-    priceChange24h < -10
-      ? quoteOrderQty * 2
-      : priceChange24h < -5
-      ? quoteOrderQty * 1.5
-      : quoteOrderQty;
+    quoteOrderQty +
+    (Number(priceChangePercent) < 0
+      ? (Math.abs(Math.floor(Math.ceil(parseInt(priceChangePercent)))) * 10) /
+        100
+      : 0);
+
+  // calculateBuyQuntity(quoteOrderQty, priceChangePercent);
+  log = buyQuoteOrderQty;
+  console.log(colors.magenta("Calculated quantity to buy: ", buyQuoteOrderQty));
 
   const buyResponse = await api.marketBuy(
     pair,
@@ -88,7 +111,7 @@ async function runBot() {
     if (quantity) {
       console.log(
         colors.yellow(
-          `CRON set up to buy ${quantity} ${asset} with ${currency} ${
+          `CRON set up to buy ${quantity} $${asset} with ${currency} ${
             schedule ? cronstrue.toString(schedule) : "immediately."
           }`
         )
@@ -96,7 +119,7 @@ async function runBot() {
     } else {
       console.log(
         colors.yellow(
-          `CRON set up to buy ${quoteOrderQty} ${currency} of ${asset} ${
+          `CRON set up to buy circa ${quoteOrderQty} ${currency} of $${asset} ${
             schedule ? cronstrue.toString(schedule) : "immediately."
           }`
         )
