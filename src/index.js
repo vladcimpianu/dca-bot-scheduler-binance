@@ -49,7 +49,6 @@ async function placeOrder(coin) {
       : 0);
 
   // calculateBuyQuntity(quoteOrderQty, priceChangePercent);
-  log = buyQuoteOrderQty;
   console.log(colors.magenta("Calculated quantity to buy: ", buyQuoteOrderQty));
 
   const buyResponse = await api.marketBuy(
@@ -65,7 +64,7 @@ async function placeOrder(coin) {
 
   const response = {
     ...buyResponse,
-    executedQty: quoteOrderQty,
+    executedQty: buyQuoteOrderQty,
   };
 
   if (response.orderId) {
