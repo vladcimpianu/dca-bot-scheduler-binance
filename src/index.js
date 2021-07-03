@@ -6,56 +6,43 @@ import { SendGridNotification } from "./services/sendgrid-notification.js";
 import colors from "colors";
 import fetch from "node-fetch";
 import querystring from "querystring";
+import { calculateBuyQuntity } from "./helpers/calculateAmountToBuy.js";
 
-const apiUrl = "https://api.binance.com";
-const notification = new SendGridNotification(config.sendgrid_secret);
+const {
+  binance_key: BINANCE_KEY,
+  binance_secret: BINANCE_SECRET,
+  binanceApiUrl: API_URL,
+  sendgrid_secret,
+} = config;
+const notification = new SendGridNotification(sendgrid_secret);
 
 /**
  * @param {object} coin
  */
 async function placeOrder(coin) {
-  const api = new BinanceAPI(config.binance_key, config.binance_secret);
+  const api = new BinanceAPI(BINANCE_KEY, BINANCE_SECRET);
   const { asset, currency, quantity, quoteOrderQty } = coin;
   const pair = asset + currency;
 
-  const priceChangeUrl = `${apiUrl}/api/v3/ticker/24hr?${querystring.stringify({
-    symbol: pair,
-  })}`;
-  const priceChangeResponse = await fetch(priceChangeUrl, {
+  const priceChangeUrl = `${API_URL}/api/v3/ticker/24hr?${querystring.stringify(
+    {
+      symbol: pair,
+    }
+  )}`;
+  const { priceChangePercent } = await fetch(priceChangeUrl, {
     method: "GET",
     headers: {
       "X-MBX-APIKEY": config.binance_key,
       "Content-Type": "application/json",
     },
-  });
-  const priceChangeJSON = await priceChangeResponse.json();
-  const { priceChangePercent } = priceChangeJSON;
+  }).then((response) => response.json());
   console.log(priceChangePercent);
 
-  // const calculateBuyQuntity = (index, change) => {
-  //   const amountToAdd =
-  //     parseInt(change) < 0
-  //       ? (Math.abs(Math.floor(Math.ceil(parseInt(change)))) * 10) / 100
-  //       : 0;
-  //   const result = index + amountToAdd;
-  //   return result;
-  // };
-
-  const buyQuoteOrderQty =
-    quoteOrderQty +
-    (Number(priceChangePercent) < 0
-      ? (Math.abs(Math.floor(Math.ceil(parseInt(priceChangePercent)))) * 10) /
-        100
-      : 0);
-
-  // calculateBuyQuntity(quoteOrderQty, priceChangePercent);
-  console.log(colors.magenta("Calculated quantity to buy: ", buyQuoteOrderQty));
-
-  const buyResponse = await api.marketBuy(
-    pair,
-    quantity,
-    buyQuoteOrderQty < 10.01 ? buyQuoteOrderQty + 10.02 : buyQuoteOrderQty
+  const buyQuoteOrderQty = calculateBuyQuntity(
+    quoteOrderQty,
+    priceChangePercent
   );
+  const buyResponse = await api.marketBuy(pair, quantity, buyQuoteOrderQty);
 
   const sellResponse =
     buyResponse.status === "FILLED" && buyQuoteOrderQty < 10.01
