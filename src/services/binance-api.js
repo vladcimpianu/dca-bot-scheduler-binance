@@ -1,7 +1,9 @@
 import fetch from "node-fetch";
 import crypto from "crypto";
 import querystring from "querystring";
+import { config } from "../../config.js";
 
+const { binance_key: key, binance_secret: secret, apiUrl } = config;
 export class BinanceAPI {
   /**
    * @param {string} key

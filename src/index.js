@@ -8,27 +8,20 @@ import fetch from "node-fetch";
 import querystring from "querystring";
 import { calculateBuyQuntity } from "./helpers/calculateAmountToBuy.js";
 
-const {
-  binance_key: BINANCE_KEY,
-  binance_secret: BINANCE_SECRET,
-  binanceApiUrl: API_URL,
-  sendgrid_secret,
-} = config;
-const notification = new SendGridNotification(sendgrid_secret);
+const apiUrl = "https://api.binance.com";
+const notification = new SendGridNotification(config.sendgrid_secret);
 
 /**
  * @param {object} coin
  */
 async function placeOrder(coin) {
-  const api = new BinanceAPI(BINANCE_KEY, BINANCE_SECRET);
+  const api = new BinanceAPI(config.binance_key, config.binance_secret);
   const { asset, currency, quantity, quoteOrderQty } = coin;
   const pair = asset + currency;
 
-  const priceChangeUrl = `${API_URL}/api/v3/ticker/24hr?${querystring.stringify(
-    {
-      symbol: pair,
-    }
-  )}`;
+  const priceChangeUrl = `${apiUrl}/api/v3/ticker/24hr?${querystring.stringify({
+    symbol: pair,
+  })}`;
   const { priceChangePercent } = await fetch(priceChangeUrl, {
     method: "GET",
     headers: {
@@ -36,16 +29,26 @@ async function placeOrder(coin) {
       "Content-Type": "application/json",
     },
   }).then((response) => response.json());
-  console.log(priceChangePercent);
+
+  console.log(
+    colors.bgBlue(
+      `Price for ${asset} changed with ${priceChangePercent}% in the last 24 hours.`
+    )
+  );
 
   const buyQuoteOrderQty = calculateBuyQuntity(
     quoteOrderQty,
     priceChangePercent
   );
-  const buyResponse = await api.marketBuy(pair, quantity, buyQuoteOrderQty);
+
+  const buyResponse = await api.marketBuy(
+    pair,
+    quantity,
+    buyQuoteOrderQty < 10.01 ? buyQuoteOrderQty + 10.01 : buyQuoteOrderQty
+  );
 
   const sellResponse =
-    buyResponse.status === "FILLED" && buyQuoteOrderQty < 10.01
+    buyResponse.status == "FILLED" && buyQuoteOrderQty < 10.01
       ? await api.marketSell(pair, quantity, 10.01)
       : {};
 
@@ -58,7 +61,7 @@ async function placeOrder(coin) {
     const successText = `Successfully purchased: ${response.executedQty}${currency} worth of ${asset} @ ${response.fills[0].price}.\n`;
     const data = `${JSON.stringify(response)}\n`;
 
-    console.log(colors.green(successText), colors.grey(data));
+    console.log(colors.bgGreen(successText), colors.grey(data));
     await notification.send(
       config.notifications.to,
       config.notifications.from,
@@ -96,8 +99,8 @@ async function runBot() {
 
     if (quantity) {
       console.log(
-        colors.yellow(
-          `CRON set up to buy ${quantity} $${asset} with ${currency} ${
+        colors.bgYellow(
+          `CRON started the process to buy ${quantity} $${asset} with ${currency} ${
             schedule ? cronstrue.toString(schedule) : "immediately."
           }`
         )
@@ -105,7 +108,7 @@ async function runBot() {
     } else {
       console.log(
         colors.yellow(
-          `CRON set up to buy circa ${quoteOrderQty} ${currency} of $${asset} ${
+          `CRON started the process to buy circa ${quoteOrderQty} ${currency} of $${asset} ${
             schedule ? cronstrue.toString(schedule) : "immediately."
           }`
         )
@@ -113,9 +116,9 @@ async function runBot() {
     }
 
     // If a schedule is not defined, the asset will be bought immediately
-    // otherwise a cronjob is setup to place the order on a schedule
     if (!schedule) {
       await placeOrder(coin);
+      // otherwise a cronjob is setup to place the order on a schedule
     } else {
       cron.scheduleJob(schedule, async () => await placeOrder(coin));
     }
