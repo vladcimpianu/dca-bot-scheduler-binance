@@ -3,7 +3,6 @@ import crypto from "crypto";
 import querystring from "querystring";
 import { config } from "../../config.js";
 
-const { binance_key: key, binance_secret: secret, apiUrl } = config;
 export class BinanceAPI {
   /**
    * @param {string} key
@@ -29,14 +28,15 @@ export class BinanceAPI {
    * @param {string} symbol
    * @param {string} quantity
    * @param {string} quoteOrderQty
+   * @param {string} sideEffectType
    */
-  async marketBuy(symbol, quantity, quoteOrderQty) {
+  async marketBuy(symbol, quantity, quoteOrderQty, sideEffectType) {
     let params = {
       symbol: symbol,
       side: "BUY",
       type: "MARKET",
       recvWindow: 30000,
-      sideEffectType: "MARGIN_BUY",
+      sideEffectType: sideEffectType || "MARGIN_BUY",
       timestamp: Date.now(),
     };
 
@@ -64,13 +64,13 @@ export class BinanceAPI {
     }
   }
 
-  async marketSell(symbol, quantity, quoteOrderQty) {
+  async marketSell(symbol, quantity, quoteOrderQty, sideEffectType) {
     let params = {
       symbol: symbol,
       side: "SELL",
       type: "MARKET",
       recvWindow: 30000,
-      sideEffectType: "AUTO_REPAY",
+      sideEffectType: sideEffectType || "AUTO_REPAY",
       timestamp: Date.now(),
     };
 

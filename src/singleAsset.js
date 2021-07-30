@@ -8,12 +8,26 @@ import fetch from "node-fetch";
 import querystring from "querystring";
 import { calculateBuyQuntity } from "./helpers/calculateAmountToBuy.js";
 
+/** Args options for buy script (npm run buy):
+ * 1. Script Asset - mandatory
+ * 2. Quantity in USDT - mandatory
+ * 3. Side effect type - optional -> default setting is Margin Buy, current alternative is spot
+ * @Example npm run buy btc 5 spot -> will buy 5 USDT of BTC in your spot wallet
+ * @Example npm run buy eth 12 -> will buy 12 USDT of ETH in your cross margin wallet
+ * @Note This can be configurable for is isolated margin wallet or futures
+ */
+
 const apiUrl = "https://api.binance.com";
 const notification = new SendGridNotification(config.sendgrid_secret);
+const DEFAULT_CURRENCY = "USDT";
+const SCRIPT_ASSET = process.argv.slice(2, 3).toString().trim().toUpperCase();
+const SCRIPT_QTY = Number(process.argv.slice(3, 4));
+console.log(SCRIPT_QTY);
+const SIDE_EFFECT_TYPE =
+  process.argv.slice(4, 5).toString().trim().toLowerCase() === "spot"
+    ? "NO_SIDE_EFFECT"
+    : "";
 
-/**
- * @param {object} coin
- */
 async function placeOrder(coin) {
   const api = new BinanceAPI(config.binance_key, config.binance_secret);
   const { asset, currency, quantity, quoteOrderQty } = coin;
@@ -32,24 +46,24 @@ async function placeOrder(coin) {
 
   console.log(
     colors.bgBlue(
-      `Price for ${asset} changed with ${priceChangePercent}% in the last 24 hours.`
+      `Price for ${asset} changed ${priceChangePercent}% in the last 24 hours.`
     )
   );
 
-  const buyQuoteOrderQty = calculateBuyQuntity(
-    quoteOrderQty,
-    priceChangePercent
-  );
+  const quoteQty = SCRIPT_QTY ? SCRIPT_QTY : quoteOrderQty;
+
+  const buyQuoteOrderQty = calculateBuyQuntity(quoteQty, priceChangePercent);
 
   const buyResponse = await api.marketBuy(
     pair,
     quantity,
-    buyQuoteOrderQty < 10.01 ? buyQuoteOrderQty + 10.01 : buyQuoteOrderQty
+    buyQuoteOrderQty < 10.01 ? buyQuoteOrderQty + 10.01 : buyQuoteOrderQty,
+    SIDE_EFFECT_TYPE
   );
 
   const sellResponse =
     buyResponse.status == "FILLED" && buyQuoteOrderQty < 10.01
-      ? await api.marketSell(pair, quantity, 10.01)
+      ? await api.marketSell(pair, quantity, 10.01, SIDE_EFFECT_TYPE)
       : {};
 
   const response = {
@@ -58,7 +72,7 @@ async function placeOrder(coin) {
   };
 
   if (response.orderId) {
-    const successText = `Successfully purchased: ${response.executedQty}${currency} worth of ${asset} @ ${response.fills[0].price}.\n`;
+    const successText = `Successfully purchased: ${response.executedQty} ${currency} worth of ${asset} @ ${response.fills[0].price}.\n`;
     const data = `${JSON.stringify(response)}\n`;
 
     console.log(colors.bgGreen(successText), colors.grey(data));
@@ -88,40 +102,24 @@ async function runBot() {
     colors.grey(`[${new Date().toLocaleString()}]`)
   );
 
-  for (const coin of config.buy) {
-    const { schedule, asset, currency, quantity, quoteOrderQty } = coin;
+  const coin = {
+    asset: SCRIPT_ASSET,
+    currency: DEFAULT_CURRENCY,
+    quoteOrderQty: SCRIPT_QTY,
+  };
 
-    if (quantity && quoteOrderQty) {
-      throw new Error(
-        `Error: You can not have both quantity and quoteOrderQty options at the same time.`
-      );
-    }
+  if (!coin.quoteOrderQty) {
+    throw new Error(`Error: Quote currency quantity has not been provided.`);
+  }
 
-    if (quantity) {
-      console.log(
-        colors.bgYellow(
-          `CRON started the process to buy ${quantity} $${asset} with ${currency} ${
-            schedule ? cronstrue.toString(schedule) : "immediately."
-          }`
-        )
-      );
-    } else {
-      console.log(
-        colors.yellow(
-          `CRON started the process to buy circa ${quoteOrderQty} ${currency} of $${asset} ${
-            schedule ? cronstrue.toString(schedule) : "immediately."
-          }`
-        )
-      );
-    }
-
-    // If a schedule is not defined, the asset will be bought immediately
-    if (!schedule) {
-      await placeOrder(coin);
-      // otherwise a cronjob is setup to place the order on a schedule
-    } else {
-      cron.scheduleJob(schedule, async () => await placeOrder(coin));
-    }
+  try {
+    console.log(
+      colors.yellow(
+        `CRON started the process to buy circa ${coin.quoteOrderQty} ${coin.currency} of ${coin.asset}.`
+      )
+    );
+  } finally {
+    await placeOrder(coin);
   }
 }
 
